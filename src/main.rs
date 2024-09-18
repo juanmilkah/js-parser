@@ -88,7 +88,9 @@ fn parse_expression(input: &str) -> Expr {
                 }
                 operator_stack.push(token);
             }
-            "(" => operator_stack.push(token),
+            "(" => {
+                operator_stack.push(token);
+            }
             ")" => {
                 while !operator_stack.is_empty() && operator_stack.last().unwrap() != &"(" {
                     let op = operator_stack.pop().unwrap();
@@ -102,6 +104,9 @@ fn parse_expression(input: &str) -> Expr {
             }
             num if num.parse::<i64>().is_ok() => {
                 output_queue.push(Expr::Number(num.parse().unwrap()));
+            }
+            var if var.trim().parse::<i64>().is_ok() => {
+                output_queue.push(Expr::Number(var.trim().parse().unwrap()));
             }
             var => {
                 output_queue.push(Expr::Variable(var.to_string()));
@@ -147,23 +152,6 @@ fn precedence(op: &str) -> usize {
     }
 }
 
-fn codegen(exp: &Expr, vars: &HashMap<String, i64>) -> String {
-    match exp {
-        Expr::Number(n) => n.to_string(),
-        Expr::Variable(name) => {
-            if let Some(value) = vars.get(name) {
-                value.to_string()
-            } else {
-                panic!("Undefined Variable")
-            }
-        }
-        Expr::Add(left, right) => format!("{} + {}", codegen(left, vars), codegen(right, vars)),
-        Expr::Sub(left, right) => format!("{} - {}", codegen(left, vars), codegen(right, vars)),
-        Expr::Mul(left, right) => format!("{} * {}", codegen(left, vars), codegen(right, vars)),
-        Expr::Div(left, right) => format!("{} / {}", codegen(left, vars), codegen(right, vars)),
-    }
-}
-
 fn evaluate_expr(expr: &Expr, vars: &HashMap<String, i64>) -> i64 {
     match expr {
         Expr::Number(n) => *n,
@@ -176,16 +164,7 @@ fn evaluate_expr(expr: &Expr, vars: &HashMap<String, i64>) -> i64 {
 }
 
 fn main() {
-    let js_expression = "3 + (4 * 2) / (1 - 5)";
-    let parsed_expr = parse_expression(js_expression);
-    println!("Parsed Expression: {:?}", parsed_expr);
-
-    let js_code = r#"
-        var x = 5
-        var y = 10
-        x = x + y * 2
-        y = x / 2
-        "#;
+    let js_code = r#"3 + (4 * 2) / (1 - 5)"#;
     let mut program = parse_program(js_code);
 
     println!("Parsed Program: {:?}", program);
@@ -203,6 +182,7 @@ fn main() {
                     decl.name,
                     program.variables.get(&decl.name).unwrap()
                 );
+                let _ = decl.value;
             }
             Stmt::Expression(expr) => {
                 let result = evaluate_expr(expr, &program.variables);
